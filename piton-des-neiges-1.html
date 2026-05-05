@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Piton des Neiges</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Inconsolata:wght@300;400&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --cream: #f5f0e8; --ink: #1a1410; --rust: #b8451a;
+    --gold: #c8a85a; --mist: #8a8075;
+  }
+
+  html, body {
+    height: 100%; background: var(--ink); color: var(--cream);
+    font-family: 'Inconsolata', monospace;
+    overflow: hidden; user-select: none;
+  }
+
+  body {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: 100dvh; position: relative;
+  }
+
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+    background-size: 128px; pointer-events: none; z-index: 100; opacity: 0.4;
+  }
+
+  /* ── PERMISSION SCREEN ── */
+  #permScreen {
+    position: fixed; inset: 0; z-index: 50;
+    background: var(--ink);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 2rem; text-align: center;
+    transition: opacity 0.6s ease;
+  }
+
+  #permScreen.hidden { opacity: 0; pointer-events: none; }
+
+  .perm-mountain { margin-bottom: 2rem; opacity: 0.85; }
+
+  .perm-title {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    font-size: clamp(1.8rem, 6vw, 2.6rem);
+    letter-spacing: 0.12em; line-height: 1.15; margin-bottom: 0.3rem;
+  }
+
+  .perm-title em { font-style: italic; color: var(--gold); }
+
+  .perm-elev {
+    font-size: 0.65rem; letter-spacing: 0.3em;
+    color: var(--mist); text-transform: uppercase; margin-bottom: 2.2rem;
+  }
+
+  .perm-steps {
+    display: flex; flex-direction: column; gap: 1rem;
+    width: 100%; max-width: 300px; margin-bottom: 2.4rem;
+  }
+
+  .perm-step {
+    display: flex; align-items: center; gap: 0.9rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(200,168,90,0.15);
+    border-radius: 4px; padding: 0.8rem 1rem;
+    font-size: 0.7rem; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--mist);
+    transition: border-color 0.3s, color 0.3s;
+  }
+
+  .perm-step.granted { border-color: rgba(200,168,90,0.5); color: var(--gold); }
+  .perm-step.denied  { border-color: rgba(184,69,26,0.5);  color: var(--rust); }
+  .perm-step svg { flex-shrink: 0; }
+
+  .perm-btn {
+    background: none; border: 1px solid var(--gold); color: var(--gold);
+    font-family: 'Inconsolata', monospace; font-size: 0.75rem;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    padding: 0.9rem 2.4rem; cursor: pointer; border-radius: 2px;
+    transition: background 0.2s, color 0.2s; -webkit-appearance: none;
+  }
+
+  .perm-btn:disabled { opacity: 0.5; cursor: default; }
+  .perm-btn:not(:disabled):active { background: rgba(200,168,90,0.15); }
+
+  .perm-note {
+    margin-top: 1.2rem; font-size: 0.58rem; letter-spacing: 0.15em;
+    color: rgba(138,128,117,0.5); max-width: 260px; line-height: 1.7;
+  }
+
+  /* ── COMPASS SCREEN ── */
+  #appScreen {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    width: 100%; opacity: 0; transition: opacity 0.8s ease 0.3s;
+  }
+
+  #appScreen.visible { opacity: 1; }
+
+  .title-block { text-align: center; margin-bottom: 2.5rem; }
+
+  .title-block h1 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    letter-spacing: 0.15em; color: var(--cream); line-height: 1.1;
+  }
+
+  .title-block h1 em { font-style: italic; color: var(--gold); }
+
+  .title-block .subtitle {
+    font-size: 0.65rem; letter-spacing: 0.3em;
+    color: var(--mist); margin-top: 0.4rem; text-transform: uppercase;
+  }
+
+  .compass-wrap {
+    position: relative;
+    width: min(72vw, 72vh, 340px); height: min(72vw, 72vh, 340px);
+  }
+
+  .ring-outer {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 1px solid rgba(200,168,90,0.35);
+    box-shadow: 0 0 40px rgba(200,168,90,0.06), inset 0 0 40px rgba(0,0,0,0.4);
+  }
+
+  .degree-marks { position: absolute; inset: 6px; border-radius: 50%; }
+  .degree-marks svg { width: 100%; height: 100%; }
+
+  .compass-face {
+    position: absolute; inset: 18%; border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #2a2218, #0d0b08);
+    border: 1px solid rgba(200,168,90,0.2);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,0.8), 0 4px 20px rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .needle-wrap {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+    will-change: transform;
+  }
+
+  .needle {
+    position: relative; width: 4px; height: 70%;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  .needle-north {
+    flex: 1; width: 100%;
+    background: linear-gradient(to top, var(--rust), #e05520);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    filter: drop-shadow(0 0 6px rgba(184,69,26,0.6));
+  }
+
+  .needle-south {
+    flex: 1; width: 100%;
+    background: linear-gradient(to bottom, var(--mist), #5a5248);
+    clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+  }
+
+  .needle-center {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--gold); box-shadow: 0 0 8px rgba(200,168,90,0.5); z-index: 5;
+  }
+
+  .mountain-icon { position: absolute; top: -28px; left: 50%; transform: translateX(-50%); }
+
+  .cardinals { position: absolute; inset: 10%; pointer-events: none; }
+
+  .cardinal {
+    position: absolute;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+    font-weight: 300; letter-spacing: 0.1em;
+    color: var(--mist); transform: translate(-50%, -50%);
+  }
+
+  .cardinal.N { top: 4%;  left: 50%; color: var(--cream); font-weight: 400; }
+  .cardinal.S { top: 96%; left: 50%; }
+  .cardinal.E { top: 50%; left: 96%; }
+  .cardinal.W { top: 50%; left: 4%;  }
+
+  .info-panel { margin-top: 2rem; text-align: center; min-height: 5rem; }
+
+  .bearing-display {
+    font-size: clamp(2rem, 8vw, 3rem);
+    font-family: 'Cormorant Garamond', serif; font-weight: 300;
+    color: var(--gold); letter-spacing: 0.05em; line-height: 1;
+  }
+
+  .bearing-display span { font-size: 0.5em; color: var(--mist); vertical-align: super; }
+
+  .distance-display {
+    font-size: 0.7rem; color: var(--mist);
+    letter-spacing: 0.25em; margin-top: 0.4rem; text-transform: uppercase;
+  }
+
+  .status-msg {
+    font-size: 0.65rem; color: var(--mist);
+    letter-spacing: 0.18em; text-transform: uppercase;
+    padding: 0 1rem; line-height: 1.7; max-width: 280px; margin: 0 auto;
+  }
+
+  .coords-footer {
+    position: fixed; bottom: 1.5rem; left: 0; right: 0;
+    text-align: center; font-size: 0.58rem;
+    letter-spacing: 0.2em; color: rgba(138,128,117,0.5); z-index: 10;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(1.3); }
+  }
+
+  .live-dot {
+    display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--rust);
+    margin-right: 0.4rem; vertical-align: middle;
+    animation: pulse 2s ease-in-out infinite;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── PERMISSION SCREEN ── -->
+<div id="permScreen">
+  <svg class="perm-mountain" width="64" height="48" viewBox="0 0 64 48" fill="none">
+    <path d="M32 2L62 46H2L32 2Z" fill="none" stroke="#c8a85a" stroke-width="1.2"/>
+    <path d="M22 28L32 10L42 28" fill="none" stroke="#f5f0e8" stroke-width="0.8" opacity="0.5"/>
+    <path d="M27 22L32 14L37 22L34 20L32 24L30 20Z" fill="#f5f0e8" opacity="0.3"/>
+  </svg>
+
+  <div class="perm-title">Piton des <em>Neiges</em></div>
+  <div class="perm-elev">3 070 m — La Réunion</div>
+
+  <div class="perm-steps">
+    <div class="perm-step" id="stepGeo">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        <circle cx="12" cy="12" r="9" stroke-dasharray="2 2" opacity="0.4"/>
+      </svg>
+      Localisation GPS
+    </div>
+    <div class="perm-step" id="stepCompass">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z"/>
+      </svg>
+      Boussole
+    </div>
+  </div>
+
+  <button class="perm-btn" id="permBtn" onclick="requestPermissions()">
+    Activer
+  </button>
+
+  <div class="perm-note">
+    Ces données restent sur votre appareil.<br>Aucune information n'est transmise.
+  </div>
+</div>
+
+<!-- ── COMPASS SCREEN ── -->
+<div id="appScreen">
+  <div class="title-block">
+    <h1>Piton des <em>Neiges</em></h1>
+    <div class="subtitle">3 070 m — La Réunion</div>
+  </div>
+
+  <div class="compass-wrap">
+    <div class="ring-outer"></div>
+    <div class="degree-marks">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <g id="ticks"></g>
+      </svg>
+    </div>
+    <div class="cardinals">
+      <div class="cardinal N">N</div>
+      <div class="cardinal S">S</div>
+      <div class="cardinal E">E</div>
+      <div class="cardinal W">O</div>
+    </div>
+    <div class="compass-face">
+      <div class="needle-wrap" id="needleWrap">
+        <div class="needle">
+          <svg class="mountain-icon" width="18" height="14" viewBox="0 0 18 14" fill="none">
+            <path d="M9 0L18 14H0L9 0Z" fill="#c8a85a" fill-opacity="0.9"/>
+            <path d="M6 7.5L9 3L12 7.5" fill="#f5f0e8" fill-opacity="0.6"/>
+          </svg>
+          <div class="needle-north"></div>
+          <div class="needle-center"></div>
+          <div class="needle-south"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-panel">
+    <div class="status-msg" id="statusMsg">Calcul en cours…</div>
+  </div>
+</div>
+
+<div class="coords-footer" id="coordsFooter">
+  Piton des Neiges — 21°05'S, 55°29'E
+</div>
+
+<script>
+const TARGET = { lat: -21.0892, lng: 55.4823 };
+let userPos = null, deviceHeading = null, needleAngle = 0;
+
+// ── Tick marks ──
+(function() {
+  const g = document.getElementById('ticks');
+  const cx = 100, cy = 100, r = 96;
+  for (let i = 0; i < 360; i += 5) {
+    const rad = (i - 90) * Math.PI / 180;
+    const isMajor = i % 45 === 0;
+    const len = isMajor ? 10 : (i % 15 === 0 ? 6 : 3);
+    const x1 = cx + r * Math.cos(rad), y1 = cy + r * Math.sin(rad);
+    const x2 = cx + (r-len) * Math.cos(rad), y2 = cy + (r-len) * Math.sin(rad);
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+    l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+    l.setAttribute('stroke', isMajor ? 'rgba(200,168,90,0.5)' : 'rgba(200,168,90,0.2)');
+    l.setAttribute('stroke-width', isMajor ? '1.5' : '0.8');
+    g.appendChild(l);
+  }
+})();
+
+// ── Maths ──
+function bearingTo(from, to) {
+  const r = d => d * Math.PI / 180;
+  const dL = r(to.lng - from.lng);
+  const y = Math.sin(dL) * Math.cos(r(to.lat));
+  const x = Math.cos(r(from.lat)) * Math.sin(r(to.lat)) - Math.sin(r(from.lat)) * Math.cos(r(to.lat)) * Math.cos(dL);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function haversineKm(from, to) {
+  const R = 6371, r = d => d * Math.PI / 180;
+  const dLat = r(to.lat - from.lat), dLng = r(to.lng - from.lng);
+  const a = Math.sin(dLat/2)**2 + Math.cos(r(from.lat)) * Math.cos(r(to.lat)) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function formatDist(km) {
+  return km < 1 ? `${Math.round(km*1000)} m` : `${km.toFixed(0)} km`;
+}
+
+// ── Needle ──
+function updateNeedle() {
+  if (!userPos) return;
+  const bearing = bearingTo(userPos, TARGET);
+  const dist    = haversineKm(userPos, TARGET);
+  const rotation = deviceHeading !== null ? bearing - deviceHeading : bearing;
+  const delta = ((rotation - needleAngle) % 360 + 540) % 360 - 180;
+  needleAngle += delta;
+  document.getElementById('needleWrap').style.transform = `rotate(${needleAngle}deg)`;
+  document.getElementById('infoPanel').innerHTML = `
+    <div class="bearing-display">${Math.round(bearing)}<span>°</span></div>
+    <div class="distance-display"><span class="live-dot"></span>${formatDist(dist)} du sommet</div>
+  `;
+  document.getElementById('coordsFooter').textContent =
+    `Vous : ${userPos.lat.toFixed(4)}°, ${userPos.lng.toFixed(4)}° · Sommet : 21.0892°S, 55.4823°E`;
+}
+
+// ── Orientation handler ──
+function onOrientation(e) {
+  if (e.webkitCompassHeading !== undefined) {
+    deviceHeading = e.webkitCompassHeading;
+  } else if (e.alpha !== null) {
+    deviceHeading = (360 - e.alpha) % 360;
+  }
+  if (userPos) updateNeedle();
+}
+
+// ── Step indicators ──
+function setStep(id, state) {
+  const el = document.getElementById(id);
+  el.classList.remove('granted','denied');
+  if (state) el.classList.add(state);
+}
+
+// ── Launch compass screen ──
+function launchApp() {
+  document.getElementById('permScreen').classList.add('hidden');
+  setTimeout(() => {
+    document.getElementById('permScreen').style.display = 'none';
+    document.getElementById('appScreen').classList.add('visible');
+  }, 700);
+}
+
+// ── Geolocation ──
+function startGeo() {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { setStep('stepGeo','denied'); resolve(false); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setStep('stepGeo','granted');
+        navigator.geolocation.watchPosition(
+          p => { userPos = { lat: p.coords.latitude, lng: p.coords.longitude }; updateNeedle(); },
+          () => {}, { enableHighAccuracy: true, maximumAge: 3000 }
+        );
+        resolve(true);
+      },
+      () => { setStep('stepGeo','denied'); resolve(false); },
+      { enableHighAccuracy: true, timeout: 12000 }
+    );
+  });
+}
+
+// ── Compass ──
+function startCompass() {
+  return new Promise(resolve => {
+    const listen = () => {
+      let fired = false;
+      const probe = e => {
+        if (fired) return;
+        const hasHeading = e.webkitCompassHeading !== undefined || e.alpha !== null;
+        if (!hasHeading) return;
+        fired = true;
+        setStep('stepCompass','granted');
+        window.addEventListener('deviceorientationabsolute', onOrientation, true);
+        window.addEventListener('deviceorientation', onOrientation, true);
+        resolve(true);
+      };
+      window.addEventListener('deviceorientation', probe, { once: true });
+      setTimeout(() => { if (!fired) { setStep('stepCompass','denied'); resolve(false); } }, 3000);
+    };
+
+    if (typeof DeviceOrientationEvent !== 'undefined' &&
+        typeof DeviceOrientationEvent.requestPermission === 'function') {
+      DeviceOrientationEvent.requestPermission()
+        .then(r => r === 'granted' ? listen() : (setStep('stepCompass','denied'), resolve(false)))
+        .catch(() => (setStep('stepCompass','denied'), resolve(false)));
+    } else if (typeof DeviceOrientationEvent !== 'undefined') {
+      listen();
+    } else {
+      setStep('stepCompass','denied'); resolve(false);
+    }
+  });
+}
+
+// ── Entry point (called by button) ──
+async function requestPermissions() {
+  const btn = document.getElementById('permBtn');
+  btn.disabled = true;
+  btn.textContent = '…';
+
+  const [geo, compass] = await Promise.all([startGeo(), startCompass()]);
+
+  await new Promise(r => setTimeout(r, 700)); // let user see checkmarks
+
+  if (!geo) {
+    document.getElementById('statusMsg').innerHTML =
+      `<span style="color:var(--rust)">GPS refusé — activez la localisation dans les réglages</span>`;
+  } else if (!compass) {
+    document.getElementById('statusMsg').innerHTML =
+      `Cap affiché depuis le Nord géographique`;
+  }
+
+  launchApp();
+  if (userPos) updateNeedle();
+}
+</script>
+</body>
+</html>
