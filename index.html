@@ -83,10 +83,10 @@
     font-family: 'Inconsolata', monospace; font-size: 0.75rem;
     letter-spacing: 0.3em; text-transform: uppercase;
     padding: 0.9rem 2.4rem; cursor: pointer; border-radius: 2px;
-    transition: background 0.2s, color 0.2s; -webkit-appearance: none;
+    transition: background 0.2s; -webkit-appearance: none;
   }
 
-  .perm-btn:disabled { opacity: 0.5; cursor: default; }
+  .perm-btn:disabled { opacity: 0.4; cursor: default; }
   .perm-btn:not(:disabled):active { background: rgba(200,168,90,0.15); }
 
   .perm-note {
@@ -120,7 +120,8 @@
 
   .compass-wrap {
     position: relative;
-    width: min(72vw, 72vh, 340px); height: min(72vw, 72vh, 340px);
+    width: min(72vw, 72vh, 340px);
+    height: min(72vw, 72vh, 340px);
   }
 
   .ring-outer {
@@ -143,7 +144,8 @@
   .needle-wrap {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
-    transition: transform 0.5s cubic-bezier(0.34, 1.2, 0.64, 1);
+    /* Transition CSS pour le lissage visuel final */
+    transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     will-change: transform;
   }
 
@@ -206,8 +208,8 @@
 
   .status-msg {
     font-size: 0.65rem; color: var(--mist);
-    letter-spacing: 0.18em; text-transform: uppercase;
-    padding: 0 1rem; line-height: 1.7; max-width: 280px; margin: 0 auto;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    padding: 0 1rem; line-height: 1.7;
   }
 
   .coords-footer {
@@ -227,6 +229,18 @@
     margin-right: 0.4rem; vertical-align: middle;
     animation: pulse 2s ease-in-out infinite;
   }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  .spinner {
+    display: inline-block; width: 10px; height: 10px;
+    border: 1px solid var(--mist); border-top-color: var(--gold);
+    border-radius: 50%; margin-right: 0.5rem; vertical-align: middle;
+    animation: spin 1s linear infinite;
+  }
 </style>
 </head>
 <body>
@@ -236,7 +250,6 @@
   <svg class="perm-mountain" width="64" height="48" viewBox="0 0 64 48" fill="none">
     <path d="M32 2L62 46H2L32 2Z" fill="none" stroke="#c8a85a" stroke-width="1.2"/>
     <path d="M22 28L32 10L42 28" fill="none" stroke="#f5f0e8" stroke-width="0.8" opacity="0.5"/>
-    <path d="M27 22L32 14L37 22L34 20L32 24L30 20Z" fill="#f5f0e8" opacity="0.3"/>
   </svg>
 
   <div class="perm-title">Piton des <em>Neiges</em></div>
@@ -260,9 +273,7 @@
     </div>
   </div>
 
-  <button class="perm-btn" id="permBtn" onclick="requestPermissions()">
-    Activer
-  </button>
+  <button class="perm-btn" id="permBtn" onclick="requestPermissions()">Activer</button>
 
   <div class="perm-note">
     Ces données restent sur votre appareil.<br>Aucune information n'est transmise.
@@ -304,8 +315,10 @@
     </div>
   </div>
 
-  <div class="info-panel">
-    <div class="status-msg" id="statusMsg">Calcul en cours…</div>
+  <div class="info-panel" id="infoPanel">
+    <div class="status-msg" id="statusMsg">
+      <span class="spinner"></span>Acquisition GPS…
+    </div>
   </div>
 </div>
 
@@ -315,7 +328,28 @@
 
 <script>
 const TARGET = { lat: -21.0892, lng: 55.4823 };
-let userPos = null, deviceHeading = null, needleAngle = 0;
+let userPos     = null;
+let needleAngle = 0;
+
+// ── Lissage du magnétomètre (filtre passe-bas) ──
+// On garde un buffer circulaire d'angles et on fait la moyenne
+const SMOOTH_WINDOW = 12; // nombre de mesures à moyenner
+const headingBuffer = [];
+let smoothedHeading = null;
+
+function pushHeading(raw) {
+  headingBuffer.push(raw);
+  if (headingBuffer.length > SMOOTH_WINDOW) headingBuffer.shift();
+
+  // Moyenne circulaire (évite le problème 359°→1°)
+  let sinSum = 0, cosSum = 0;
+  for (const h of headingBuffer) {
+    const r = h * Math.PI / 180;
+    sinSum += Math.sin(r);
+    cosSum += Math.cos(r);
+  }
+  smoothedHeading = (Math.atan2(sinSum, cosSum) * 180 / Math.PI + 360) % 360;
+}
 
 // ── Tick marks ──
 (function() {
@@ -353,18 +387,21 @@ function haversineKm(from, to) {
 }
 
 function formatDist(km) {
-  return km < 1 ? `${Math.round(km*1000)} m` : `${km.toFixed(0)} km`;
+  return km < 1 ? `${Math.round(km*1000)} m` : `${Math.round(km)} km`;
 }
 
-// ── Needle ──
+// ── Mise à jour de l'aiguille ──
 function updateNeedle() {
   if (!userPos) return;
   const bearing = bearingTo(userPos, TARGET);
   const dist    = haversineKm(userPos, TARGET);
-  const rotation = deviceHeading !== null ? bearing - deviceHeading : bearing;
-  const delta = ((rotation - needleAngle) % 360 + 540) % 360 - 180;
+  const rotation = smoothedHeading !== null ? bearing - smoothedHeading : bearing;
+
+  // Anti-flip 359→0
+  let delta = ((rotation - needleAngle) % 360 + 540) % 360 - 180;
   needleAngle += delta;
   document.getElementById('needleWrap').style.transform = `rotate(${needleAngle}deg)`;
+
   document.getElementById('infoPanel').innerHTML = `
     <div class="bearing-display">${Math.round(bearing)}<span>°</span></div>
     <div class="distance-display"><span class="live-dot"></span>${formatDist(dist)} du sommet</div>
@@ -373,24 +410,25 @@ function updateNeedle() {
     `Vous : ${userPos.lat.toFixed(4)}°, ${userPos.lng.toFixed(4)}° · Sommet : 21.0892°S, 55.4823°E`;
 }
 
-// ── Orientation handler ──
+// ── Orientation ──
 function onOrientation(e) {
-  if (e.webkitCompassHeading !== undefined) {
-    deviceHeading = e.webkitCompassHeading;
+  let raw = null;
+  if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
+    raw = e.webkitCompassHeading; // iOS
   } else if (e.alpha !== null) {
-    deviceHeading = (360 - e.alpha) % 360;
+    raw = (360 - e.alpha) % 360;  // Android
   }
+  if (raw === null) return;
+  pushHeading(raw);
   if (userPos) updateNeedle();
 }
 
-// ── Step indicators ──
 function setStep(id, state) {
   const el = document.getElementById(id);
   el.classList.remove('granted','denied');
   if (state) el.classList.add(state);
 }
 
-// ── Launch compass screen ──
 function launchApp() {
   document.getElementById('permScreen').classList.add('hidden');
   setTimeout(() => {
@@ -399,7 +437,7 @@ function launchApp() {
   }, 700);
 }
 
-// ── Geolocation ──
+// ── GPS ──
 function startGeo() {
   return new Promise(resolve => {
     if (!navigator.geolocation) { setStep('stepGeo','denied'); resolve(false); return; }
@@ -407,27 +445,32 @@ function startGeo() {
       pos => {
         userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setStep('stepGeo','granted');
+        // Continuer à surveiller
         navigator.geolocation.watchPosition(
-          p => { userPos = { lat: p.coords.latitude, lng: p.coords.longitude }; updateNeedle(); },
-          () => {}, { enableHighAccuracy: true, maximumAge: 3000 }
+          p => {
+            userPos = { lat: p.coords.latitude, lng: p.coords.longitude };
+            updateNeedle();
+          },
+          () => {},
+          { enableHighAccuracy: true, maximumAge: 3000 }
         );
         resolve(true);
       },
       () => { setStep('stepGeo','denied'); resolve(false); },
-      { enableHighAccuracy: true, timeout: 12000 }
+      { enableHighAccuracy: true, timeout: 15000 }
     );
   });
 }
 
-// ── Compass ──
+// ── Boussole ──
 function startCompass() {
   return new Promise(resolve => {
     const listen = () => {
       let fired = false;
       const probe = e => {
         if (fired) return;
-        const hasHeading = e.webkitCompassHeading !== undefined || e.alpha !== null;
-        if (!hasHeading) return;
+        const ok = (e.webkitCompassHeading !== undefined) || (e.alpha !== null);
+        if (!ok) return;
         fired = true;
         setStep('stepCompass','granted');
         window.addEventListener('deviceorientationabsolute', onOrientation, true);
@@ -451,22 +494,24 @@ function startCompass() {
   });
 }
 
-// ── Entry point (called by button) ──
+// ── Entrée principale ──
 async function requestPermissions() {
   const btn = document.getElementById('permBtn');
-  btn.disabled = true;
-  btn.textContent = '…';
+  btn.disabled = true; btn.textContent = '…';
 
   const [geo, compass] = await Promise.all([startGeo(), startCompass()]);
 
-  await new Promise(r => setTimeout(r, 700)); // let user see checkmarks
+  await new Promise(r => setTimeout(r, 600));
 
   if (!geo) {
     document.getElementById('statusMsg').innerHTML =
-      `<span style="color:var(--rust)">GPS refusé — activez la localisation dans les réglages</span>`;
+      `<span style="color:var(--rust);font-size:0.62rem">GPS refusé — activez la localisation dans les réglages</span>`;
   } else if (!compass) {
     document.getElementById('statusMsg').innerHTML =
-      `Cap affiché depuis le Nord géographique`;
+      `Cap depuis le Nord géographique`;
+  } else {
+    document.getElementById('statusMsg').innerHTML =
+      `<span class="spinner"></span>Acquisition GPS…`;
   }
 
   launchApp();
