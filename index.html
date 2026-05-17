@@ -371,14 +371,25 @@ function formatDist(km) {
 }
 
 const cardinalsEl = document.querySelector('.cardinals');
+const degreeMarksEl = document.querySelector('.degree-marks');
+
+// Angle courant du cadran (lissé par lerp comme l'aiguille)
+let dialAngle = 0;
+let targetDialAngle = 0;
 
 function animateNeedle() {
-  let delta = ((targetAngle - needleAngle) % 360 + 540) % 360 - 180;
-  needleAngle += delta * 0.1;
+  // Aiguille
+  let deltaNeedle = ((targetAngle - needleAngle) % 360 + 540) % 360 - 180;
+  needleAngle += deltaNeedle * 0.1;
   document.getElementById('needleWrap').style.transform = `rotate(${needleAngle}deg)`;
-  if (smoothedHeading !== null) {
-    cardinalsEl.style.transform = `rotate(${-smoothedHeading}deg)`;
-  }
+
+  // Cadran (ticks + cardinaux) — tourne en sens inverse de l'appareil
+  let deltaDial = ((targetDialAngle - dialAngle) % 360 + 540) % 360 - 180;
+  dialAngle += deltaDial * 0.1;
+  const dialTransform = `rotate(${dialAngle}deg)`;
+  cardinalsEl.style.transform = dialTransform;
+  degreeMarksEl.style.transform = dialTransform;
+
   requestAnimationFrame(animateNeedle);
 }
 
@@ -405,6 +416,8 @@ function onOrientation(e) {
   }
   if (raw === null) return;
   pushHeading(raw);
+  // Cadran tourne en sens inverse de l'orientation de l'appareil
+  targetDialAngle = -smoothedHeading;
   computeTarget();
 }
 
