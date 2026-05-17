@@ -167,7 +167,7 @@
   /* Icône trésor à la pointe de l'aiguille */
   .needle-icon { position: absolute; top: -30px; left: 50%; transform: translateX(-50%); }
 
-  .cardinals { position: absolute; inset: 10%; pointer-events: none; }
+  .cardinals { position: absolute; inset: 10%; pointer-events: none; will-change: transform; }
   .cardinal {
     position: absolute;
     font-family: 'Cormorant Garamond', serif;
@@ -370,10 +370,15 @@ function formatDist(km) {
   return km < 1 ? `${Math.round(km*1000)} m` : `${Math.round(km)} km`;
 }
 
+const cardinalsEl = document.querySelector('.cardinals');
+
 function animateNeedle() {
   let delta = ((targetAngle - needleAngle) % 360 + 540) % 360 - 180;
   needleAngle += delta * 0.1;
   document.getElementById('needleWrap').style.transform = `rotate(${needleAngle}deg)`;
+  if (smoothedHeading !== null) {
+    cardinalsEl.style.transform = `rotate(${-smoothedHeading}deg)`;
+  }
   requestAnimationFrame(animateNeedle);
 }
 
