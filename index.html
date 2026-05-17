@@ -143,10 +143,10 @@
     color: var(--mist); transform: translate(-50%, -50%);
   }
   /* Positions sur le cadran (N en haut, etc.) */
-  .cardinal.N { top: 6%;  left: 50%; color: var(--cream); font-weight: 400; }
-  .cardinal.S { top: 94%; left: 50%; }
-  .cardinal.E { top: 50%; left: 94%; }
-  .cardinal.W { top: 50%; left: 6%;  }
+  .cardinal.N { top: 14%; left: 50%; color: var(--cream); font-weight: 400; }
+  .cardinal.S { top: 86%; left: 50%; }
+  .cardinal.E { top: 50%; left: 86%; }
+  .cardinal.W { top: 50%; left: 14%; }
 
   /* Face centrale — fixe par rapport à l'écran */
   .compass-face {
@@ -354,9 +354,11 @@ let targetNeedle = 0;
 let targetDial   = 0;
 
 // ── Filtre passe-bas (moyenne circulaire) ──
-const BUF = 20;
+const BUF = 40;  // buffer large pour stabilité
 const sinH = [], cosH = [];
 let smoothedHeading = null;
+let lastSmoothed = null;
+const DEAD_ZONE = 1.5; // degrés — ignorer les variations < 1.5°
 
 function pushHeading(deg) {
   const r = deg * Math.PI / 180;
@@ -364,7 +366,14 @@ function pushHeading(deg) {
   cosH.push(Math.cos(r)); if (cosH.length > BUF) cosH.shift();
   const s = sinH.reduce((a,b) => a+b, 0) / sinH.length;
   const c = cosH.reduce((a,b) => a+b, 0) / cosH.length;
-  smoothedHeading = (Math.atan2(s, c) * 180 / Math.PI + 360) % 360;
+  const candidate = (Math.atan2(s, c) * 180 / Math.PI + 360) % 360;
+  // Zone morte : ne mettre à jour que si le changement depasse le seuil
+  if (lastSmoothed !== null) {
+    let diff = Math.abs(((candidate - lastSmoothed) + 540) % 360 - 180);
+    if (diff < DEAD_ZONE) return;
+  }
+  smoothedHeading = candidate;
+  lastSmoothed = candidate;
 }
 
 // ── Tick marks ──
@@ -417,8 +426,8 @@ const needleEl   = document.getElementById('needleWrap');
 const rotatingEl = document.getElementById('compassRotating');
 
 function animate() {
-  needleAngle = lerpAngle(needleAngle, targetNeedle, 0.1);
-  dialAngle   = lerpAngle(dialAngle,   targetDial,   0.1);
+  needleAngle = lerpAngle(needleAngle, targetNeedle, 0.05);
+  dialAngle   = lerpAngle(dialAngle,   targetDial,   0.05);
 
   needleEl.style.transform   = `rotate(${needleAngle}deg)`;
   rotatingEl.style.transform = `rotate(${dialAngle}deg)`;
