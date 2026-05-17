@@ -495,17 +495,32 @@ function updateTargets() {
 }
 
 // ── Orientation ──
-function onOrientation(e) {
-  let raw = null;
-  if (typeof e.webkitCompassHeading === 'number') {
-    raw = e.webkitCompassHeading;
-  } else if (typeof e.alpha === 'number') {
-    raw = (360 - e.alpha) % 360;
-  }
-  if (raw === null) return;
+// Sur Android, on écoute deviceorientationabsolute en priorité.
+// alpha = rotation de l'appareil autour de Z dans le référentiel monde.
+// Le cap magnétique = (360 - alpha) % 360 SEULEMENT si l'écran est en portrait face au ciel.
+// deviceorientationabsolute garantit un référentiel géographique absolu.
+let usingAbsolute = false;
+
+function handleAbsolute(e) {
+  if (typeof e.alpha !== 'number') return;
+  usingAbsolute = true;
+  // Sur Android avec absolute: alpha donne la rotation depuis le Nord, sens antihoraire
+  const raw = (360 - e.alpha) % 360;
   pushHeading(raw);
   updateTargets();
 }
+
+function handleRelative(e) {
+  // N'utiliser que si on n'a pas d'absolute
+  if (usingAbsolute) return;
+  if (typeof e.webkitCompassHeading === 'number') {
+    // iOS : direct
+    pushHeading(e.webkitCompassHeading);
+    updateTargets();
+  }
+}
+
+function onOrientation(e) {}  // kept for compat
 
 function setStep(id, state) {
   const el = document.getElementById(id);
@@ -543,8 +558,8 @@ function startGeo() {
 }
 
 function startCompass() {
-  window.addEventListener('deviceorientationabsolute', onOrientation, true);
-  window.addEventListener('deviceorientation', onOrientation, true);
+  window.addEventListener('deviceorientationabsolute', handleAbsolute, true);
+  window.addEventListener('deviceorientation', handleRelative, true);
   setStep('stepCompass','granted');
 }
 
