@@ -310,18 +310,20 @@
   </div>
 
   <div class="compass-wrap">
-    <!-- Cadran fixe -->
-    <div class="ring-outer"></div>
-    <div class="degree-marks">
-      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-        <g id="ticks"></g>
-      </svg>
-    </div>
-    <div class="cardinals">
-      <div class="cardinal N">N</div>
-      <div class="cardinal S">S</div>
-      <div class="cardinal E">E</div>
-      <div class="cardinal W">O</div>
+    <!-- Cadran rotatif -->
+    <div id="dialEl" style="position:absolute;inset:0;will-change:transform;">
+      <div class="ring-outer"></div>
+      <div class="degree-marks">
+        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <g id="ticks"></g>
+        </svg>
+      </div>
+      <div class="cardinals">
+        <div class="cardinal N">N</div>
+        <div class="cardinal S">S</div>
+        <div class="cardinal E">E</div>
+        <div class="cardinal W">O</div>
+      </div>
     </div>
 
     <!-- Face centrale -->
@@ -466,11 +468,17 @@ function lerpAngle(current, target, f) {
 // ── Animation ──
 const northEl  = document.getElementById('northWrap');
 const targetEl = document.getElementById('targetWrap');
+const dialEl   = document.getElementById('dialEl');
+
+let dialAngle = 0;
 
 function animate() {
+  // Cadran tourne en sens inverse du heading (même valeur que aiguille Nord)
+  dialAngle         = lerpAngle(dialAngle,         targetNorth,    0.07);
   northAngle        = lerpAngle(northAngle,        targetNorth,    0.07);
   targetNeedleAngle = lerpAngle(targetNeedleAngle, targetTreasure, 0.07);
 
+  dialEl.style.transform   = `rotate(${dialAngle}deg)`;
   northEl.style.transform  = `rotate(${northAngle}deg)`;
   targetEl.style.transform = `rotate(${targetNeedleAngle}deg)`;
 
