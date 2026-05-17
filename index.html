@@ -101,30 +101,13 @@
   }
   .title-block h1 em { font-style: italic; color: var(--gold); }
 
-  /*
-   * Architecture de la boussole :
-   *
-   * .compass-wrap
-   *   └── .compass-rotating   ← tourne en sens inverse de l'appareil
-   *         ├── .ring-outer   (anneau décoratif)
-   *         ├── .degree-marks (ticks)
-   *         └── .cardinals    (N S E O — fixes dans le monde réel)
-   *   └── .compass-face       ← fixe par rapport à l'écran
-   *         └── .needle-wrap  ← pointe vers la cible
-   */
-
   .compass-wrap {
     position: relative;
     width: min(72vw, 72vh, 340px);
     height: min(72vw, 72vh, 340px);
   }
 
-  /* Tout ce qui tourne avec l'orientation de l'appareil */
-  .compass-rotating {
-    position: absolute; inset: 0;
-    will-change: transform;
-  }
-
+  /* Cadran fixe */
   .ring-outer {
     position: absolute; inset: 0; border-radius: 50%;
     border: 1px solid rgba(200,168,90,0.35);
@@ -134,21 +117,21 @@
   .degree-marks { position: absolute; inset: 6px; }
   .degree-marks svg { width: 100%; height: 100%; }
 
+  /* Cardinaux fixes */
   .cardinals { position: absolute; inset: 0; pointer-events: none; }
   .cardinal {
     position: absolute;
     font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+    font-size: clamp(0.7rem, 2.5vw, 0.9rem);
     font-weight: 300; letter-spacing: 0.1em;
     color: var(--mist); transform: translate(-50%, -50%);
   }
-  /* Positions sur le cadran (N en haut, etc.) */
   .cardinal.N { top: 14%; left: 50%; color: var(--cream); font-weight: 400; }
   .cardinal.S { top: 86%; left: 50%; }
   .cardinal.E { top: 50%; left: 86%; }
   .cardinal.W { top: 50%; left: 14%; }
 
-  /* Face centrale — fixe par rapport à l'écran */
+  /* Face centrale */
   .compass-face {
     position: absolute; inset: 18%; border-radius: 50%;
     background: radial-gradient(circle at 40% 35%, #2a2218, #0d0b08);
@@ -157,41 +140,85 @@
     display: flex; align-items: center; justify-content: center;
   }
 
-  /* Aiguille — tourne pour pointer vers la cible */
-  .needle-wrap {
+  /* Aiguille Nord — bleue/blanche, pointe vers le Nord géographique */
+  .needle-north-wrap {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
     will-change: transform;
   }
 
-  .needle {
+  .needle-north-el {
+    position: relative; width: 3px; height: 60%;
+    display: flex; flex-direction: column; align-items: center;
+    opacity: 0.6;
+  }
+
+  .north-tip {
+    flex: 1; width: 100%;
+    background: linear-gradient(to top, #5a8ab8, #a0c4e8);
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  }
+
+  .north-tail {
+    flex: 1; width: 100%;
+    background: linear-gradient(to bottom, #4a6a88, #2a3a48);
+    clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+  }
+
+  /* Aiguille trésor — dorée, pointe vers la cible */
+  .needle-target-wrap {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    will-change: transform;
+  }
+
+  .needle-target-el {
     position: relative; width: 4px; height: 70%;
     display: flex; flex-direction: column; align-items: center;
   }
 
-  .needle-north {
+  .target-tip {
     flex: 1; width: 100%;
     background: linear-gradient(to top, var(--rust), #e05520);
     clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
     filter: drop-shadow(0 0 6px rgba(184,69,26,0.6));
   }
 
-  .needle-south {
+  .target-tail {
     flex: 1; width: 100%;
     background: linear-gradient(to bottom, var(--mist), #5a5248);
     clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
   }
 
+  .target-icon { position: absolute; top: -28px; left: 50%; transform: translateX(-50%); }
+
+  /* Centre commun */
   .needle-center {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--gold); box-shadow: 0 0 8px rgba(200,168,90,0.5); z-index: 5;
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--gold); box-shadow: 0 0 8px rgba(200,168,90,0.5); z-index: 10;
   }
 
-  .needle-icon { position: absolute; top: -28px; left: 50%; transform: translateX(-50%); }
+  /* Légende */
+  .legend {
+    margin-top: 1.2rem;
+    display: flex; gap: 1.4rem; align-items: center; justify-content: center;
+  }
 
-  .info-panel { margin-top: 2rem; text-align: center; min-height: 5rem; }
+  .legend-item {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--mist);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  .legend-dot.nord   { background: #a0c4e8; }
+  .legend-dot.tresor { background: var(--rust); }
+
+  .info-panel { margin-top: 1rem; text-align: center; min-height: 4rem; }
 
   .bearing-display {
     font-size: clamp(2rem, 8vw, 3rem);
@@ -283,38 +310,58 @@
   </div>
 
   <div class="compass-wrap">
-
-    <!-- Cadran rotatif (tourne en sens inverse de l'appareil) -->
-    <div class="compass-rotating" id="compassRotating">
-      <div class="ring-outer"></div>
-      <div class="degree-marks">
-        <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-          <g id="ticks"></g>
-        </svg>
-      </div>
-      <div class="cardinals">
-        <div class="cardinal N">N</div>
-        <div class="cardinal S">S</div>
-        <div class="cardinal E">E</div>
-        <div class="cardinal W">O</div>
-      </div>
+    <!-- Cadran fixe -->
+    <div class="ring-outer"></div>
+    <div class="degree-marks">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+        <g id="ticks"></g>
+      </svg>
+    </div>
+    <div class="cardinals">
+      <div class="cardinal N">N</div>
+      <div class="cardinal S">S</div>
+      <div class="cardinal E">E</div>
+      <div class="cardinal W">O</div>
     </div>
 
-    <!-- Face fixe + aiguille -->
+    <!-- Face centrale -->
     <div class="compass-face">
-      <div class="needle-wrap" id="needleWrap">
-        <div class="needle">
-          <svg class="needle-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
+
+      <!-- Aiguille Nord (bleue, pointe vers le Nord géographique) -->
+      <div class="needle-north-wrap" id="northWrap">
+        <div class="needle-north-el">
+          <div class="north-tip"></div>
+          <div class="north-tail"></div>
+        </div>
+      </div>
+
+      <!-- Aiguille trésor (rouge/dorée, pointe vers la cible) -->
+      <div class="needle-target-wrap" id="targetWrap">
+        <div class="needle-target-el">
+          <svg class="target-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
             <line x1="2" y1="2" x2="16" y2="16" stroke="#c8a85a" stroke-width="2" stroke-linecap="round"/>
             <line x1="16" y1="2" x2="2" y2="16" stroke="#c8a85a" stroke-width="2" stroke-linecap="round"/>
           </svg>
-          <div class="needle-north"></div>
-          <div class="needle-center"></div>
-          <div class="needle-south"></div>
+          <div class="target-tip"></div>
+          <div class="target-tail"></div>
         </div>
       </div>
-    </div>
 
+      <!-- Centre -->
+      <div class="needle-center"></div>
+    </div>
+  </div>
+
+  <!-- Légende -->
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-dot nord"></div>
+      Nord
+    </div>
+    <div class="legend-item">
+      <div class="legend-dot tresor"></div>
+      Trésor
+    </div>
   </div>
 
   <div class="info-panel" id="infoPanel">
@@ -328,37 +375,34 @@
 
 <script>
 /*
- * LOGIQUE BOUSSOLE
+ * LOGIQUE :
  *
- * deviceHeading = cap de l'appareil depuis le Nord (0=Nord, 90=Est, 180=Sud, 270=Ouest)
- * bearing       = cap géographique vers la cible depuis notre position
+ * Cadran fixe — N toujours en haut de l'écran.
  *
- * Aiguille : doit pointer vers la cible dans le référentiel de l'écran
- *   → rotation aiguille = bearing - deviceHeading
+ * Aiguille bleue (Nord) :
+ *   rotation = -deviceHeading
+ *   → pointe toujours vers le Nord géographique
+ *   → si tu regardes vers l'Est, elle pointe à gauche (vers le Nord)
  *
- * Cadran (N/S/E/O) : doit rester aligné avec le monde réel
- *   → rotation cadran = -deviceHeading
- *   (si l'appareil tourne de 90° vers la droite, le cadran tourne de 90° vers la gauche)
+ * Aiguille rouge (Trésor) :
+ *   rotation = bearing - deviceHeading
+ *   → pointe vers la cible dans le référentiel de l'écran
  *
- * Les deux sont lissés avec le même lerp circulaire pour la fluidité.
+ * Les deux sont lissées identiquement.
  */
 
 const TARGET = { lat: -21.0892, lng: 55.4823 };
 
-// Angles courants (lerp)
-let needleAngle = 0;
-let dialAngle   = 0;
+let northAngle  = 0, targetNeedleAngle = 0;
+let targetNorth = 0, targetTreasure   = 0;
+let userPos = null;
 
-// Angles cibles (mis à jour par les capteurs)
-let targetNeedle = 0;
-let targetDial   = 0;
-
-// ── Filtre passe-bas (moyenne circulaire) ──
-const BUF = 40;  // buffer large pour stabilité
+// ── Filtre passe-bas ──
+const BUF = 30;
 const sinH = [], cosH = [];
 let smoothedHeading = null;
 let lastSmoothed = null;
-const DEAD_ZONE = 1.5; // degrés — ignorer les variations < 1.5°
+const DEAD_ZONE = 2.0;
 
 function pushHeading(deg) {
   const r = deg * Math.PI / 180;
@@ -367,9 +411,8 @@ function pushHeading(deg) {
   const s = sinH.reduce((a,b) => a+b, 0) / sinH.length;
   const c = cosH.reduce((a,b) => a+b, 0) / cosH.length;
   const candidate = (Math.atan2(s, c) * 180 / Math.PI + 360) % 360;
-  // Zone morte : ne mettre à jour que si le changement depasse le seuil
   if (lastSmoothed !== null) {
-    let diff = Math.abs(((candidate - lastSmoothed) + 540) % 360 - 180);
+    const diff = Math.abs(((candidate - lastSmoothed) + 540) % 360 - 180);
     if (diff < DEAD_ZONE) return;
   }
   smoothedHeading = candidate;
@@ -415,41 +458,33 @@ function formatDist(km) {
   return km < 1 ? `${Math.round(km*1000)} m` : `${Math.round(km)} km`;
 }
 
-// ── Lerp circulaire ──
-function lerpAngle(current, target, factor) {
-  let delta = ((target - current) % 360 + 540) % 360 - 180;
-  return current + delta * factor;
+function lerpAngle(current, target, f) {
+  const delta = ((target - current) % 360 + 540) % 360 - 180;
+  return current + delta * f;
 }
 
-// ── Boucle d'animation ──
-const needleEl   = document.getElementById('needleWrap');
-const rotatingEl = document.getElementById('compassRotating');
+// ── Animation ──
+const northEl  = document.getElementById('northWrap');
+const targetEl = document.getElementById('targetWrap');
 
 function animate() {
-  needleAngle = lerpAngle(needleAngle, targetNeedle, 0.05);
-  dialAngle   = lerpAngle(dialAngle,   targetDial,   0.05);
+  northAngle        = lerpAngle(northAngle,        targetNorth,    0.07);
+  targetNeedleAngle = lerpAngle(targetNeedleAngle, targetTreasure, 0.07);
 
-  needleEl.style.transform   = `rotate(${needleAngle}deg)`;
-  rotatingEl.style.transform = `rotate(${dialAngle}deg)`;
+  northEl.style.transform  = `rotate(${northAngle}deg)`;
+  targetEl.style.transform = `rotate(${targetNeedleAngle}deg)`;
 
   requestAnimationFrame(animate);
 }
 
-// ── Mise à jour des cibles ──
-let userPos = null;
-
 function updateTargets() {
   if (!userPos) return;
-
   const bearing = bearingTo(userPos, TARGET);
   const dist    = haversineKm(userPos, TARGET);
   const h       = smoothedHeading !== null ? smoothedHeading : 0;
 
-  // Aiguille pointe vers la cible dans le référentiel de l'écran
-  targetNeedle = bearing - h;
-
-  // Cadran reste aligné avec le Nord géographique
-  targetDial = -h;
+  targetNorth    = -h;           // pointe vers le Nord géographique
+  targetTreasure = bearing - h;  // pointe vers le trésor
 
   document.getElementById('infoPanel').innerHTML = `
     <div class="bearing-display">${Math.round(bearing)}<span>°</span></div>
@@ -463,13 +498,8 @@ function updateTargets() {
 function onOrientation(e) {
   let raw = null;
   if (typeof e.webkitCompassHeading === 'number') {
-    // iOS : heading direct, 0=Nord, sens horaire
     raw = e.webkitCompassHeading;
-  } else if (e.absolute && typeof e.alpha === 'number') {
-    // Android avec orientation absolue : alpha = rotation depuis le Nord
-    raw = (360 - e.alpha) % 360;
   } else if (typeof e.alpha === 'number') {
-    // Android sans orientation absolue : approximation
     raw = (360 - e.alpha) % 360;
   }
   if (raw === null) return;
@@ -488,11 +518,10 @@ function launchApp() {
   setTimeout(() => {
     document.getElementById('permScreen').style.display = 'none';
     document.getElementById('appScreen').classList.add('visible');
-    animate(); // démarrer la boucle
+    animate();
   }, 700);
 }
 
-// ── GPS ──
 function startGeo() {
   return new Promise(resolve => {
     if (!navigator.geolocation) { setStep('stepGeo','denied'); resolve(false); return; }
@@ -513,9 +542,7 @@ function startGeo() {
   });
 }
 
-// ── Boussole ──
 function startCompass() {
-  // Priorité à deviceorientationabsolute (plus fiable sur Android)
   window.addEventListener('deviceorientationabsolute', onOrientation, true);
   window.addEventListener('deviceorientation', onOrientation, true);
   setStep('stepCompass','granted');
@@ -532,7 +559,6 @@ async function requestCompassPermission() {
   return true;
 }
 
-// ── Entrée principale ──
 async function requestPermissions() {
   const btn = document.getElementById('permBtn');
   btn.disabled = true; btn.textContent = '…';
